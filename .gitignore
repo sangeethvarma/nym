@@ -8,3 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
+
+# data files
+list
+current.json
+
+# scratch files
+scratch*
+test*.py
+
