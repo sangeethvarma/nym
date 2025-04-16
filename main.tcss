@@ -1,0 +1,15 @@
+.yesbox {
+    border: solid green;
+    height: 1fr
+}
+
+.nobox {
+    border: solid red;
+    height: 1fr
+}
+
+.maybebox {
+    border: solid yellow;
+    height: 1fr
+}
+

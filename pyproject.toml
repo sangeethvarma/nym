@@ -1,7 +1,16 @@
 [project]
 name = "nym"
-version = "0.1.0"
+version = "0.2.0"
 description = "No, Yes, Maybe?"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pyperclip>=1.9.0",
+    "rich>=14.0.0",
+    "textual>=3.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "textual-dev>=1.7.0",
+]
