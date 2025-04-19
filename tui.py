@@ -1,37 +1,71 @@
 import json
+import os
+import pyperclip
 
 from textual.app import App
 from textual.screen import ModalScreen
 from textual.binding import Binding
-from textual.widgets import Footer, Header, Input, DataTable
+from textual.widgets import Footer, Header, Input, DataTable, OptionList
+from textual.widgets.option_list import Option
 from textual.containers import Horizontal
 
-from helpers import get_list
+iymn = ['items','yes', 'maybe', 'no']
 
 class InputScreen(ModalScreen[str]):
-    BINDINGS = [("escape", "app.pop_screen", "Pop screen")]
+    BINDINGS = [('escape', 'app.pop_screen', 'Pop screen')]
 
     def compose(self):
-        yield Input(placeholder = "string", id="string")
-    
+        yield Input(placeholder = 'string', id='string')
+
     def on_input_submitted(self, event):
         self.query_one(Input).value = ''
         self.dismiss(event.value)
+
+class OptionScreen(ModalScreen[str]):
+    fileList = [i.split('.')[0] for i in os.listdir('./lists/') if i.endswith('.json')]
+    BINDINGS = [('escape', 'app.pop_screen', 'Pop screen'),
+                ('n', 'focused.cursor_down', 'next'),
+                ('p', 'focused.cursor_up', 'previous'),
+                ('j', 'focused.cursor_down', 'next'),
+                ('k', 'focused.cursor_up', 'previous'),
+                ]
+
+    def compose(self):
+        yield Input(placeholder = 'file', id='input')
+        yield OptionList(*self.fileList, id='optList')
+
+    def on_mount(self):
+        print('hello')
+        self.query_one('#input').focus()
+
+    def on_input_changed(self, event):
+        optList = self.query_one('#optList')
+        optList.clear_options()
+        newList = [i for i in self.fileList if event.value in i]
+        optList.add_options(new_options=newList)
+
+    def on_option_list_option_selected(self, event):
+        optList = event.option_list
+        opt = optList.options[optList.highlighted].prompt
+        self.dismiss(opt)
     
 class nymApp(App):
-    DATA = get_list()
     iymn = ['items','yes', 'maybe', 'no']
+    ymnd = {'y': 'yes', 'm': 'maybe', 'x':'no'}
+    # DATA = {k: [] for k in iymn}
+    # DATA['listname'] = 'default'
     
     BINDINGS = [
         Binding('y', 'yes', 'mark yes'),
         Binding('x', 'no', 'mark no'),
         Binding('m', 'maybe', 'mark maybe'),
-        Binding('s', 'switch_table', 'switch tables'),
+        Binding('M', 'maybes_to_items', 'maybes to items'),
+        Binding('X', 'clear_nos', 'clear nos'),
         Binding('n', 'next', 'next', show=False),
         Binding('j', 'next', 'next', show=False),        
         Binding('p', 'previous', 'previous', show=False),
         Binding('k', 'previous', 'previous', show=False),
-        Binding('/', 'search lists', 'search list'),
+        Binding('/', 'search', 'search list'),
         Binding('f', 'search_reset', 'finish search'),
         Binding('S', 'save', 'save data'),
         Binding('r', 'rename', 'rename list'),
@@ -40,9 +74,13 @@ class nymApp(App):
         Binding('o', 'open', 'open'),
         ]
     CSS_PATH = 'main.tcss'
-    SCREENS = {'input': InputScreen}
+    SCREENS = {'input': InputScreen, 'options': OptionScreen}
     SEARCHING = False
-    
+
+    def __init__(self, DATA):
+        super().__init__()
+        self. DATA = DATA
+            
     def compose(self):
         yield Header()
         with Horizontal():
@@ -50,7 +88,7 @@ class nymApp(App):
                 yield DataTable(cursor_type='row', id=i, classes=i+'box', zebra_stripes=True)
         yield Footer()
 
-    def on_mount(self):
+    def populate_tables(self):
         for i in self.iymn:
             table = self.query_one('#'+i)
             if i == 'items':
@@ -61,68 +99,40 @@ class nymApp(App):
             for item in self.DATA[i]:
                 table.add_row(item, key=item)
 
+    def on_mount(self):
+        self.populate_tables()
+        
     def action_next(self):
         self.focused.action_cursor_down()
 
     def action_previous(self):
         self.focused.action_cursor_up()
 
-    def action_sort(self, event):
-        print(event)
-        # focus = self.focused
-        # name = focus.id
-        
-        # yes = self.query_one('#yes')
-        # current = focus.cursor_coordinate
-        # item = focus.get_cell_at(current)
-        # yes.add_row(item, key=item)
-        # self.DATA['yes'].append(item)
-        # focus.remove_row(item)
-        # self.DATA[name].remove(item)
+    def on_key(self, event):
+        if (i:=event.key) in ['y','m','x']:
+            dest = self.ymnd[i]
+            focus = self.focused
+            source = focus.id
+            if dest != source:
+                destTable = self.query_one('#'+ dest)
+                cursor = focus.cursor_coordinate
+                try:
+                    item = focus.get_cell_at(cursor)
+                    destTable.add_row(item, key=item)
+                    self.DATA[dest].append(item)
+                    focus.remove_row(item)
+                    self.DATA[source].remove(item)
+                except:
+                    pass
         
     def action_yes(self):
-        focus = self.focused
-        name = focus.id
-        yes = self.query_one('#yes')
-        current = focus.cursor_coordinate
-        item = focus.get_cell_at(current)
-        yes.add_row(item, key=item)
-        self.DATA['yes'].append(item)
-        focus.remove_row(item)
-        self.DATA[name].remove(item)
-        
+        pass
+
     def action_no(self):
-        focus = self.focused
-        name = focus.id
-        no = self.query_one('#no')
-        current = focus.cursor_coordinate
-        item = focus.get_cell_at(current)
-        no.add_row(item, key=item)
-        self.DATA['no'].append(item)
-        focus.remove_row(item)
-        self.DATA[name].remove(item)
+        pass
 
     def action_maybe(self):
-        focus = self.focused
-        name = focus.id
-        maybe = self.query_one('#maybe')
-        current = focus.cursor_coordinate
-        item = focus.get_cell_at(current)
-        maybe.add_row(item, key=item)
-        self.DATA['maybe'].append(item)
-        focus.remove_row(item)
-        self.DATA[name].remove(item)
-
-    def action_switch_table(self):
-        def nexter(item, items):
-            i = items.index(item)
-            if i + 1 == len(items):
-                return items[0]
-            else:
-                return items[i + 1]
-
-        current = self.focused.id
-        self.query_one(f'#{nexter(current, self.iymn)}').focus()
+        pass
 
     def action_reset(self):
         for i in self.iymn[1:]:
@@ -133,11 +143,11 @@ class nymApp(App):
         self.DATA['items'].sort()
         items = self.query_one('#items')
         items.clear(columns=True)
-        self.on_mount()
+        self.populate_tables()
 
     def action_save(self):
         if self.DATA['listname'] != 'cleared' and (self.DATA['items'] or self.DATA['yes'] or self.DATA['maybe']):
-            with open(self.DATA['listname']+'.json', 'w', encoding='utf-8') as jf:
+            with open('./lists/'+self.DATA['listname']+'.json', 'w', encoding='utf-8') as jf:
                 json.dump(self.DATA, jf)
                 
     def action_clear(self):
@@ -147,6 +157,22 @@ class nymApp(App):
             dtable = self.query_one(f'#{i}')
             dtable.clear(columns=True)
         self.DATA['listname'] = 'cleared'
+
+    def action_clear_nos(self):
+        self.DATA['no'] = []
+        noTable = self.query_one('#no')
+        noTable.clear()
+
+    def action_maybes_to_items(self):
+        self.DATA['items'] += self.DATA['maybe']
+        self.DATA['items'].sort()
+        self.DATA['maybe'] = []
+        items = self.query_one('#items')
+        maybes = self.query_one('#maybe')
+        items.clear()
+        maybes.clear()        
+        for item in self.DATA['items']:
+            items.add_row(item, key=item)
 
     def action_rename(self):
         items = self.query_one('#items')
@@ -182,11 +208,12 @@ class nymApp(App):
 
     def action_open(self):
         def openFile(name):
-            self.action_clear()
-            self.DATA = get_list(name+'.json', False)
-            self.DATA['listname'] = name
-            self.on_mount()
-        self.push_screen('input', openFile)
+            if name:
+                self.action_clear()
+                with open('./lists/'+name+'.json') as jf:
+                    self.DATA = json.load(jf)
+                self.populate_tables()
+        self.push_screen('options', openFile)
 
     def check_action(self, action, parameters):
         if action == 'search_reset' and not self.SEARCHING:
@@ -198,6 +225,7 @@ class nymApp(App):
     def on_unmount(self):
         self.action_save()
 
-if __name__ == "__main__":
-    app = nymApp()
+if __name__ == '__main__':
+    DATA = {"items": ["sangeeth.blog", "sangeeth.cc", "sangeeth.codes", "sangeeth.fm", "sangeeth.fyi", "sangeeth.ink", "sangeeth.life", "sangeeth.site", "sangeeth.works"], "yes": [], "maybe": [], "no": [], "listname": "personal domains"}
+    app = nymApp(DATA)
     app.run()

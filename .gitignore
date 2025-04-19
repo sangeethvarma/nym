@@ -12,6 +12,7 @@ wheels/
 # data files
 list
 current.json
+data/
 
 # scratch files
 scratch*
